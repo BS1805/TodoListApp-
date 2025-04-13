@@ -1,5 +1,4 @@
-﻿// app.js
-document.addEventListener('DOMContentLoaded', function () {
+﻿document.addEventListener('DOMContentLoaded', function () {
     // API base URL - update this to match your deployment
     const API_URL = '/api/TodoItems';
 
@@ -62,7 +61,8 @@ document.addEventListener('DOMContentLoaded', function () {
     async function loadTodoItems() {
         showLoading();
         try {
-            const response = await fetch(`${API_URL}?page=${currentPage}&pageSize=${pageSize}`);
+            // Add cache-busting query parameter to ensure fresh data
+            const response = await fetch(`${API_URL}?page=${currentPage}&pageSize=${pageSize}&_=${new Date().getTime()}`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -169,7 +169,6 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             handleError(error);
         } finally {
-            hide
             hideLoading();
         }
     }

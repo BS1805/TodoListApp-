@@ -1,5 +1,4 @@
-﻿// Services/TodoService.cs
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using TodoListApp.Data;
 using TodoListApp.Models;
@@ -20,6 +19,7 @@ namespace TodoListApp.Services
             _logger = logger;
         }
 
+        // Get all todo items with pagination
         public async Task<IEnumerable<TodoItemDTO>> GetAllTodoItemsAsync(int page = 1, int pageSize = 50)
         {
             string cacheKey = $"TodoItems_Page{page}_Size{pageSize}";
@@ -45,12 +45,14 @@ namespace TodoListApp.Services
                     })
                     .ToListAsync();
 
+                // Set the cache with a defined duration
                 _cache.Set(cacheKey, items, _cacheDuration);
             }
 
             return items;
         }
 
+        // Get a single todo item by ID
         public async Task<TodoItemDTO?> GetTodoItemAsync(int id)
         {
             string cacheKey = $"TodoItem_{id}";
@@ -74,12 +76,14 @@ namespace TodoListApp.Services
                     Priority = todoItem.Priority
                 };
 
+                // Set the cache for this specific item
                 _cache.Set(cacheKey, item, _cacheDuration);
             }
 
             return item;
         }
 
+        // Create a new todo item
         public async Task<TodoItemDTO> CreateTodoItemAsync(CreateTodoItemDTO createTodoItemDto)
         {
             var todoItem = new TodoItem
@@ -98,6 +102,9 @@ namespace TodoListApp.Services
             // Invalidate relevant cache entries
             _cache.Remove("TodoItemsCount");
 
+            // Clear the cache for all pages of todo items as the list has changed
+            _cache.Remove("TodoItems_Page1_Size50");
+
             return new TodoItemDTO
             {
                 Id = todoItem.Id,
@@ -109,6 +116,7 @@ namespace TodoListApp.Services
             };
         }
 
+        // Update an existing todo item
         public async Task<TodoItemDTO?> UpdateTodoItemAsync(int id, UpdateTodoItemDTO updateTodoItemDto)
         {
             var todoItem = await _context.TodoItems.FindAsync(id);
@@ -135,10 +143,12 @@ namespace TodoListApp.Services
 
             await _context.SaveChangesAsync();
 
-            // Invalidate cache for this item
+            // Invalidate cache for this specific item
             _cache.Remove($"TodoItem_{id}");
 
-            // Return updated item
+            // Optionally remove cache for all todo items (to refresh data)
+            _cache.Remove("TodoItems_Page1_Size50");
+
             return new TodoItemDTO
             {
                 Id = todoItem.Id,
@@ -150,6 +160,7 @@ namespace TodoListApp.Services
             };
         }
 
+        // Delete a todo item by ID
         public async Task<bool> DeleteTodoItemAsync(int id)
         {
             var todoItem = await _context.TodoItems.FindAsync(id);
@@ -162,13 +173,17 @@ namespace TodoListApp.Services
             _context.TodoItems.Remove(todoItem);
             await _context.SaveChangesAsync();
 
-            // Invalidate cache
+            // Invalidate cache for the deleted item
             _cache.Remove($"TodoItem_{id}");
+
+            // Invalidate cache for the count and all todo items
             _cache.Remove("TodoItemsCount");
+            _cache.Remove("TodoItems_Page1_Size50");
 
             return true;
         }
 
+        // Get the total count of todo items
         public async Task<int> GetTotalCountAsync()
         {
             if (!_cache.TryGetValue("TodoItemsCount", out int count))
